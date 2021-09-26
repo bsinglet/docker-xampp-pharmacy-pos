@@ -45,6 +45,20 @@ COPY startup.sh /startup.sh
 
 VOLUME [ "/var/log/mysql/", "/var/log/apache2/", "/www", "/opt/lampp/apache2/conf.d/" ]
 
+# here's we set-up the vulnerable web app
+RUN curl -Lo /opt/lampp/htdocs/pharmacy.zip https://www.sourcecodester.com/sites/default/files/download/oretnom23/pharmacy.zip && \
+  cd /opt/lampp/htdocs/ && \
+  yes|apt install unzip && \
+  unzip ./pharmacy.zip && \
+  rm ./pharmacy.zip && \
+  # we have to fix a typo in the first three lines of DBConnection.php, which has the string './db' where it should just be '/db/'
+  awk '{if ($0 ~ /db/) {sub(/\.\/db/, "/db", $0); $1=$1}; print $0}' ./pharmacy/DBConnection.php >> ./pharmacy/DBConnection2.php && \
+  mv ./pharmacy/DBConnection2.php ./pharmacy/DBConnection.php && \
+  # also, permission issues are rampant with the database
+  chmod -R 777 ./pharmacy/db && \
+  # lastly, make everything in the web app owned by daemon (group mySQL) because of how xampp is run
+  chown -R daemon:mysql ./pharmacy
+
 EXPOSE 3306
 EXPOSE 22
 EXPOSE 80
